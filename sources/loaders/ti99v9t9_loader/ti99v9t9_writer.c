@@ -100,6 +100,14 @@ int TI99V9T9_libWrite_DiskFile(HXCFE_IMGLDR* imgldr_ctx,HXCFE_FLOPPY * floppy,ch
 			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "Image claims each track has %i sectors, which is clearly wrong.  Exiting.", numberofsector);
 			return HXCFE_FILECORRUPTED;
 		}
+
+		if ( (numberofsector * numberoftrack * numberofside) != nbsector )
+		{
+			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "Disk geometry %i/%i/%i does not match disk length of %i sectors.  Exiting.", numberofside, numberoftrack, numberofsector, nbsector);
+			return HXCFE_FILECORRUPTED;
+		}
+
+
  
 		imgldr_ctx->hxcfe->hxc_printf(MSG_INFO_1, "Disk geometry is %i sides, %i tracks per side, %i sectors per track.", numberofside, numberoftrack, numberofsector);
 
