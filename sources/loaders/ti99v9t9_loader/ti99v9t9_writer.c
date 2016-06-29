@@ -1,6 +1,7 @@
 /*
 //
 // Copyright (C) 2006-2014 Jean-François DEL NERO
+// Copyright (C) 2016 Christopher KOBAYASHI
 //
 // This file is part of the HxCFloppyEmulator library
 //
@@ -48,7 +49,7 @@ int TI99V9T9_libWrite_DiskFile(HXCFE_IMGLDR* imgldr_ctx,HXCFE_FLOPPY * floppy,ch
 	int32_t nbsector,imagesize;
 
 	int32_t numberofsector,numberofside,numberoftrack;
-	int32_t density = ISOIBM_FM_ENCODING;;
+	int32_t density = ISOIBM_FM_ENCODING;
 	int file_offset;
 	int32_t sectorsize = 256;
 	unsigned char * diskimage;
@@ -175,7 +176,7 @@ int TI99V9T9_libWrite_DiskFile(HXCFE_IMGLDR* imgldr_ctx,HXCFE_FLOPPY * floppy,ch
 		return HXCFE_NOERROR;
 	else
 	{
-		imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"This disk have some errors !");
+		imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Errors were found in this disk image.");
 		return HXCFE_FILECORRUPTED;
 	}
 }
