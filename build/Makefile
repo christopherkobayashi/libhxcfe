@@ -5,7 +5,7 @@ AR=ar
 UNAME := $(shell uname)
 
 BASEDIR=../sources
-INCLUDES = -I$(BASEDIR)/ -I ../../../libhxcadaptor/trunk/sources
+INCLUDES = -I$(BASEDIR)/ -I ../../libhxcadaptor/sources
 
 CFLAGS=-O3 $(INCLUDES)
 DISKLOADERPLUGINS_IPF=
@@ -29,8 +29,8 @@ endif
 
 ifeq ($(UNAME), Darwin)
 CFLAGS += -arch i386 -mmacosx-version-min=10.5
-LDFLAGS +=-arch i386 -dynamiclib -current_version 2.0 -install_name @executable_path/../Frameworks/libhxcfe.dylib -mmacosx-version-min=10.5
-EXEC=libhxcfe.dylib
+#LDFLAGS +=-arch i386 -dynamiclib -current_version 2.0 -install_name @executable_path/../Frameworks/libhxcfe.dylib -mmacosx-version-min=10.5
+EXEC=libhxcfe.a
 endif
 
 ADFLIBOBJ= adf_hd.o adf_disk.o adf_raw.o adf_bitm.o adf_dump.o\
@@ -69,19 +69,23 @@ all: $(EXEC)
 
 libhxcfe.dll: floppy_loader.o floppy_utils.o floppy_ifmode.o emuii_track.o arburg_track.o crc.o std_crc32.o track_generator.o trackutils.o trackeditor.o gcr_track.o apple2.o sector_extractor.o display_track.o fluxStreamAnalyzer.o fs_manager.o fs_amigados.o fs_fat12.o fs_cpm.o libcpmfs.o $(ADFLIBOBJ) $(DISKLOADERPLUGINS) $(DISKWRITERPLUGINS) $(DISKLOADERPLUGINS_IPF) $(XDMSLIBOBJ) $(ZLIBOBJ) $(MINIZIPOBJ) $(XML_DISK) $(XML_PARSER_EXPAT) $(FATIOLIB) ../../../build/libhxcadaptor.a
 	$(CC) -o $@    $^ $(LDFLAGS)
-	cp $@ ../../../build
+	mkdir -p ../../build
+	cp $@ ../../build/
 
 libhxcfe.dylib: floppy_loader.o floppy_utils.o floppy_ifmode.o emuii_track.o arburg_track.o crc.o std_crc32.o track_generator.o trackutils.o trackeditor.o gcr_track.o apple2.o sector_extractor.o display_track.o fluxStreamAnalyzer.o fs_manager.o fs_amigados.o fs_fat12.o fs_cpm.o libcpmfs.o $(ADFLIBOBJ) $(DISKLOADERPLUGINS) $(DISKWRITERPLUGINS) $(DISKLOADERPLUGINS_IPF) $(XDMSLIBOBJ) $(ZLIBOBJ) $(MINIZIPOBJ) $(XML_DISK) $(XML_PARSER_EXPAT) $(FATIOLIB) ../../../build/libhxcadaptor.a
 	$(CC) -o $@    $^ $(LDFLAGS)
-	cp $@ ../../../build
+	mkdir -p ../../build
+	cp $@ ../../build/
 
 libhxcfe.a: floppy_loader.o floppy_utils.o floppy_ifmode.o emuii_track.o crc.o std_crc32.o arburg_track.o track_generator.o trackutils.o trackeditor.o gcr_track.o apple2.o sector_extractor.o display_track.o fluxStreamAnalyzer.o fs_manager.o fs_amigados.o fs_fat12.o fs_cpm.o libcpmfs.o $(ADFLIBOBJ) $(DISKLOADERPLUGINS) $(DISKWRITERPLUGINS) $(DISKLOADERPLUGINS_IPF) $(XDMSLIBOBJ) $(ZLIBOBJ) $(MINIZIPOBJ) $(XML_DISK) $(XML_PARSER_EXPAT) $(FATIOLIB)
 	$(AR) r $@    $^
-	cp $@ ../../../build
+	mkdir -p ../../build
+	cp $@ ../../build/
 
 libhxcfe.so: floppy_loader.o floppy_utils.o floppy_ifmode.o emuii_track.o crc.o std_crc32.o arburg_track.o track_generator.o trackutils.o trackeditor.o gcr_track.o apple2.o sector_extractor.o display_track.o fluxStreamAnalyzer.o fs_manager.o fs_amigados.o fs_fat12.o fs_cpm.o libcpmfs.o $(ADFLIBOBJ) $(DISKLOADERPLUGINS) $(DISKWRITERPLUGINS) $(DISKLOADERPLUGINS_IPF) $(XDMSLIBOBJ) $(ZLIBOBJ) $(MINIZIPOBJ) $(XML_DISK) $(XML_PARSER_EXPAT) $(FATIOLIB) ../../../build/libhxcadaptor.a
 	$(CC) -o $@    $^ $(LDFLAGS)
-	cp $@ ../../../build
+	mkdir -p ../../build
+	cp $@ ../../build/
 
 floppy_loader.o: $(BASEDIR)/floppy_loader.c
 	$(CC) -o $@ -c $< $(CFLAGS)
