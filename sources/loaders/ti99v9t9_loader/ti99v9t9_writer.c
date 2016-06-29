@@ -48,13 +48,11 @@ int TI99V9T9_libWrite_DiskFile(HXCFE_IMGLDR* imgldr_ctx,HXCFE_FLOPPY * floppy,ch
 	int32_t nbsector,imagesize;
 
 	int32_t numberofsector,numberofside,numberoftrack;
-	int32_t bitrate;
-	int32_t density;
-	int32_t interleave;
+	int32_t density = ISOIBM_FM_ENCODING;;
 	int file_offset;
-	int32_t sectorsize;
+	int32_t sectorsize = 256;
 	unsigned char * diskimage;
-	int error;
+	int error = 0;
 	HXCFE_SECTORACCESS* ss;
 	HXCFE_SECTCFG* sc;
 
@@ -64,183 +62,112 @@ int TI99V9T9_libWrite_DiskFile(HXCFE_IMGLDR* imgldr_ctx,HXCFE_FLOPPY * floppy,ch
 
 	imgldr_ctx->hxcfe->hxc_printf(MSG_INFO_1,"Disk size : %d Bytes %d Sectors",imagesize,nbsector);
 
-	numberofsector=9;
-	numberofside=1;
-	numberoftrack=40;
-	bitrate=250000;
-	density=ISOIBM_FM_ENCODING;
-	interleave=4;
-	sectorsize = 256;
-
-	switch(imagesize)
+	ss = hxcfe_initSectorAccess(imgldr_ctx->hxcfe, floppy);
+	if (ss)
 	{
-		case 1*40*9*256:
-			numberofside=1;
-			numberoftrack=40;
-			numberofsector=9;
-			bitrate=250000;
-			density=ISOIBM_FM_ENCODING;
-			interleave=4;
-		break;
-
-		case 2*40*9*256:
-			// 180kbytes: either DSSD or 18-sector-per-track SSDD.
-			// We assume DSSD since DSSD is more common and is supported by
-			// the original TI SD disk controller.
-			numberofside=2;
-			numberoftrack=40;
-			numberofsector=9;
-			bitrate=250000;
-			density=ISOIBM_FM_ENCODING;
-			interleave=4;
-		break;
-
-		case 1*40*16*256:
-			// 160kbytes: 16-sector-per-track SSDD (standard format for TI
-			// DD disk controller prototype, and the TI hexbus disk
-			// controller?) */
-			numberofside=1;
-			numberoftrack=40;
-			numberofsector=16;
-			bitrate=250000;
-			density=ISOIBM_MFM_ENCODING;
-			interleave=9;
-		break;
-
-		case 2*40*16*256:
-			// 320kbytes: 16-sector-per-track DSDD (standard format for TI
-			// DD disk controller prototype, and TI hexbus disk
-			// controller?)
-			numberofside=2;
-			numberoftrack=40;
-			numberofsector=16;
-			bitrate=250000;
-			density=ISOIBM_MFM_ENCODING;
-			interleave=9;
-			break;
-
-		case 2*40*18*256:
-			//  360kbytes: 18-sector-per-track DSDD (standard format for most
-			// third-party DD disk controllers, but reportedly not supported by
-			// the original TI DD disk controller prototype)
-			numberofside=2;
-			numberoftrack=40;
-			numberofsector=18;
-			bitrate=250000;
-			density=ISOIBM_MFM_ENCODING;
-			interleave=5;
-			break;
-
-		case 2*80*18*256:
-			// 720kbytes: 18-sector-per-track 80-track DSDD (Myarc only)
-			numberofside=2;
-			numberoftrack=80;
-			numberofsector=18;
-			bitrate=250000;
-			density=ISOIBM_MFM_ENCODING;
-			interleave=5;
-			break;
-
-			case 2*80*36*256:
-			// 1.44Mbytes: DSHD (Myarc only)
-			numberofside=2;
-			numberoftrack=80;
-			numberofsector=36;
-			bitrate=500000;
-			density=ISOIBM_MFM_ENCODING;
-			interleave=11;
-			break;
-
-		default:
-			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Bad image size!..");
-			return 0;
-			break;
-	}
-
-	error = 0;
-	imagesize = numberofsector * numberoftrack * numberofside * sectorsize;
-	diskimage = malloc(imagesize) ;
-	if(diskimage)
-	{
-		memset( diskimage ,0xF6 , numberofsector * numberoftrack * numberofside * sectorsize);
-
-		ss = hxcfe_initSectorAccess(imgldr_ctx->hxcfe,floppy);
-		if(ss)
+		sc = hxcfe_searchSector(ss, 0, 0, 0, density);
+		if (!sc)
 		{
-			for(i=0;i<numberofside;i++)
+			density = ISOIBM_MFM_ENCODING;
+			sc = hxcfe_searchSector(ss, 0, 0, 0, density);
+			if (!sc)
 			{
-				for(j=0;j<numberoftrack;j++)
+				imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "This disk is neither FM nor MFM.  Exiting.");
+				return HXCFE_FILECORRUPTED;
+			}
+		}
+
+		// sc->input_data should contain the disk geometry
+
+		numberofside = sc->input_data[0x12];
+		numberofsector = sc->input_data[0x0c];
+		numberoftrack = sc->input_data[0x11];
+
+		if ( (numberofside < 1) && (numberofside > 2))
+		{
+			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "Image claims it has %i sides, which is clearly wrong.  Exiting.", numberofside);
+			return HXCFE_FILECORRUPTED;
+		}
+ 
+		if ( (numberoftrack != 40) && (numberoftrack != 80))
+		{
+			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "Image claims each side has %i tracks, which is clearly wrong.  Exiting.", numberoftrack);
+			return HXCFE_FILECORRUPTED;
+		}
+ 
+		if ( (numberofsector != 9) && (numberofsector != 16) && (numberofsector != 18) && (numberofsector != 36))
+		{
+			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR, "Image claims each track has %i sectors, which is clearly wrong.  Exiting.", numberofsector);
+			return HXCFE_FILECORRUPTED;
+		}
+ 
+		imgldr_ctx->hxcfe->hxc_printf(MSG_INFO_1, "Disk geometry is %i sides, %i tracks per side, %i sectors per track.", numberofside, numberoftrack, numberofsector);
+
+		imagesize = numberofsector * numberoftrack * numberofside * sectorsize;
+		diskimage = malloc(imagesize);
+		if (!diskimage)
+			return HXCFE_INTERNALERROR;
+		memset(diskimage, 0xF6, imagesize);
+
+		for(i=0;i<numberofside;i++)
+		{
+			for(j=0;j<numberoftrack;j++)
+			{
+				hxcfe_imgCallProgressCallback(imgldr_ctx, j + (i*numberoftrack),numberofside*numberoftrack);
+
+				for(k=0;k<numberofsector;k++)
 				{
-					hxcfe_imgCallProgressCallback(imgldr_ctx, j + (i*numberoftrack),numberofside*numberoftrack);
-
-					for(k=0;k<numberofsector;k++)
+					sc = hxcfe_searchSector(ss,j,i,k,density);
+					if(sc)
 					{
-						sc = hxcfe_searchSector(ss,j,i,k,density);
-						if(sc)
-						{
-							if(sc->use_alternate_data_crc)
-								imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Warning : Bad Data CRC : T:%d H:%d S:%d Size :%dB",j,i,k,sc->sectorsize);
+						if(sc->use_alternate_data_crc)
+							imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Warning : Bad Data CRC : T:%d H:%d S:%d Size :%dB",j,i,k,sc->sectorsize);
 
-							if(sc->sectorsize == sectorsize)
-							{
-								if(i==0)
-								{
-									file_offset=(j*numberofsector)*sectorsize + ( k * sectorsize );
-								}
-								else
-								{
-									file_offset=(  numberoftrack      *numberofsector*sectorsize) +
+						if(sc->sectorsize == sectorsize)
+						{
+							if(i==0)
+								file_offset=(j*numberofsector)*sectorsize + ( k * sectorsize );
+							else
+								file_offset=(  numberoftrack      *numberofsector*sectorsize) +
 												(((numberoftrack-1)-j)*numberofsector*sectorsize) +
 												( k * sectorsize );
-								}
-								memcpy(&diskimage[file_offset], sc->input_data, sectorsize);
-							}
-							else
-							{
-								error++;
-								imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Bad Sector Size : T:%d H:%d S:%d Size :%dB, Should be %dB",j,i,k,sc->sectorsize,sectorsize);
-							}
+							memcpy(&diskimage[file_offset], sc->input_data, sectorsize);
+						} else {
+							error++;
+							imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Bad Sector Size : T:%d H:%d S:%d Size :%dB, Should be %dB",j,i,k,sc->sectorsize,sectorsize);
+						}
 
-							hxcfe_freeSectorConfig(ss,sc);
-						}
-						else
-						{
-							imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Sector not found : T:%d H:%d S:%d",j,i,k);
-						}
+						hxcfe_freeSectorConfig(ss,sc);
+					} else {
+						imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"Sector not found : T:%d H:%d S:%d",j,i,k);
 					}
 				}
 			}
-
-			if(!error)
-			{
-				ti99v9t9file=hxc_fopen(filename,"wb");
-				if(ti99v9t9file)
-				{
-					fwrite(diskimage,imagesize,1,ti99v9t9file);
-					hxc_fclose(ti99v9t9file);
-				}
-				else
-				{
-					free(diskimage);
-					hxcfe_deinitSectorAccess(ss);
-					return HXCFE_ACCESSERROR;
-				}
-			}
 		}
-
-		free(diskimage);
-		hxcfe_deinitSectorAccess(ss);
 
 		if(!error)
-			return HXCFE_NOERROR;
-		else
 		{
-			imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"This disk have some errors !");
-			return HXCFE_FILECORRUPTED;
+			ti99v9t9file=hxc_fopen(filename,"wb");
+			if(ti99v9t9file)
+			{
+				fwrite(diskimage,imagesize,1,ti99v9t9file);
+				hxc_fclose(ti99v9t9file);
+			} else {
+				free(diskimage);
+				hxcfe_deinitSectorAccess(ss);
+				return HXCFE_ACCESSERROR;
+			}
 		}
 	}
+
+	free(diskimage);
+	hxcfe_deinitSectorAccess(ss);
+
+	if(!error)
+		return HXCFE_NOERROR;
 	else
 	{
-		return HXCFE_INTERNALERROR;
+		imgldr_ctx->hxcfe->hxc_printf(MSG_ERROR,"This disk have some errors !");
+		return HXCFE_FILECORRUPTED;
 	}
 }
