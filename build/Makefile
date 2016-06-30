@@ -29,7 +29,6 @@ endif
 
 ifeq ($(UNAME), Darwin)
 CFLAGS += -arch i386 -mmacosx-version-min=10.5
-EXEC=libhxcfe.a
 endif
 
 ADFLIBOBJ= adf_hd.o adf_disk.o adf_raw.o adf_bitm.o adf_dump.o\
