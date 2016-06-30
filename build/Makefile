@@ -16,11 +16,11 @@ ifdef IPF_LIB_SUPPORT
 endif
 
 LDFLAGS= -g -shared -lc -lm  -ldl
-EXEC=libhxcfe.so
-
-ifeq ($(UNAME), Linux)
 EXEC=libhxcfe.a
-endif
+
+# For shared libraries:
+# EXEC=libhxcfe.so
+# CFLAGS += -fPIC (in per-platform overrides)
 
 ifeq ($(findstring CYGWIN,$(shell uname)),CYGWIN)
 LDFLAGS= -g -shared -lc -lm  -ldl
