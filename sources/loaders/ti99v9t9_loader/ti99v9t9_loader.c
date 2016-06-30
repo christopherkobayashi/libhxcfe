@@ -178,12 +178,19 @@ int32_t getDiskGeometry(FILE * f,int32_t * numberoftrack,int32_t * numberofside,
 			break;
 	}
 
+	// If the geometry embedded in the input image passes sanity checks,
+	// use that geometry.  This should be the common case.
+
 	if (((*numberofsector * *numberoftrack * *numberofside) == totsecs)
 		&& ((vib.density <= 4) && (totsecs >= 2))
 		&& (filesize == totsecs*256) && !memcmp(vib.id, "DSK", 3))
 	{
 		return 1;
 	}
+
+	// The embedded geometry isn't correct; attempt to derive geometry
+	// via image file size.  This will mis-encode 80-track DSSD images.
+
 	else
 	{
 		*numberofsector=9;
